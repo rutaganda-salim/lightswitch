@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <style>
+        :root {
+            --background: #000000;
+            --foreground: #ffffff;
+            --accents-1: #111111;
+            --accents-2: #333333;
+            --accents-3: #444444;
+            --accents-4: #666666;
+            --accents-5: #888888;
+            --accents-6: #999999;
+            --accents-7: #eaeaea;
+            --accents-8: #fafafa;
+            --success: #0070f3;
+            --error: #ff0000;
+            --radius: 5px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            width: 100%;
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--accents-2);
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--foreground);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background: var(--accents-1);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: all 0.2s ease;
+            border: 1px solid var(--accents-2);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card:hover {
+            border-color: var(--accents-3);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--foreground);
+        }
+
+        .light-scene {
+            position: relative;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        .room {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .ceiling {
+            position: absolute;
+            width: 80%;
+            height: 2px;
+            background: var(--accents-3);
+            top: 20%;
+            left: 10%;
+            transform: translateZ(-50px);
+        }
+
+        .wire {
+            position: absolute;
+            width: 1px;
+            height: 80px;
+            background-color: var(--accents-4);
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .lamp {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translateX(-50%);
+            transform-style: preserve-3d;
+            transition: all 0.3s ease;
+        }
+
+        .lamp-shade {
+            width: 120px;
+            height: 70px;
+            background: var(--accents-2);
+            border-radius: 60px 60px 0 0;
+            position: relative;
+            transform: translateZ(20px);
+            overflow: hidden;
+            border: 1px solid var(--accents-3);
+        }
+
+        .lamp-shade::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 10px;
+            right: 10px;
+            height: 5px;
+            background: var(--accents-3);
+            border-radius: 50%;
+        }
+
+        .bulb {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: var(--accents-5);
+            border-radius: 50%;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .bulb.on {
+            background-color: var(--success);
+            box-shadow: 
+                0 0 30px rgba(0, 112, 243, 0.8),
+                0 0 60px rgba(0, 112, 243, 0.6),
+                0 0 100px rgba(0, 112, 243, 0.4);
+        }
+
+        .light-beam {
+            position: absolute;
+            width: 200px;
+            height: 300px;
+            background: radial-gradient(ellipse at top, rgba(0, 112, 243, 0.2) 0%, rgba(0, 112, 243, 0) 70%);
+            bottom: -300px;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .bulb.on + .light-beam {
+            opacity: 1;
+        }
+
+        .floor {
+            position: absolute;
+            width: 100%;
+            height: 100px;
+            background: var(--accents-1);
+            bottom: 0;
+            border-radius: var(--radius);
+            transform: rotateX(70deg) translateZ(-50px);
+            border: 1px solid var(--accents-2);
+        }
+
+        .floor::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0, 112, 243, 0.1) 0%, rgba(0, 112, 243, 0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 50%;
+        }
+
+        .bulb.on ~ .floor::after {
+            opacity: 1;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--accents-6);
+            background: var(--accents-2);
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+            border: 1px solid var(--accents-3);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--error);
+            transition: all 0.2s ease;
+        }
+
+        .status-indicator.on {
+            background-color: var(--success);
+            box-shadow: 0 0 10px rgba(0, 112, 243, 0.5);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #turnOnBtn {
+            background-color: var(--success);
+            color: white;
+        }
+
+        #turnOnBtn:hover {
+            background-color: rgba(0, 112, 243, 0.9);
+        }
+
+        #turnOffBtn {
+            background-color: var(--accents-2);
+            color: var(--foreground);
+            border: 1px solid var(--accents-3);
+        }
+
+        #turnOffBtn:hover {
+            background-color: var(--accents-3);
+        }
+
+        .brightness-control {
+            width: 100%;
+            padding: 16px 0;
+        }
+
+        .brightness-control h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--accents-6);
+        }
+
+        .brightness-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--accents-3);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .brightness-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--success);
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 112, 243, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .brightness-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--success);
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 112, 243, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .brightness-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .brightness-slider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .brightness-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            color: var(--accents-5);
+            font-size: 0.75rem;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            5% { opacity: 0.8; }
+            10% { opacity: 1.2; }
+            15% { opacity: 1; }
+            20% { opacity: 0.9; }
+            25% { opacity: 1.1; }
+            30% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+
+        .bulb.flicker {
+            animation: flicker 2s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                padding: 16px;
+            }
+            
+            .light-scene {
+                height: 300px;
+            }
+            
+            .lamp-shade {
+                width: 100px;
+                height: 60px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+
+        /* 3D rotation effect */
+        .room:hover {
+            transform: rotateY(5deg) rotateX(-5deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="white"/>
+                    </svg>
+                </div>
+                <span>Light Control</span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="9" y1="18" x2="15" y2="18"></line>
+                        <line x1="10" y1="22" x2="14" y2="22"></line>
+                        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path>
+                    </svg>
+                    Living Room Light
+                </div>
+                <div class="light-scene">
+                    <div class="room">
+                        <div class="ceiling"></div>
+                        <div class="wire"></div>
+                        <div class="lamp">
+                            <div class="lamp-shade"></div>
+                            <div id="bulb" class="bulb off"></div>
+                            <div class="light-beam"></div>
+                        </div>
+                        <div class="floor"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v8"></path>
+                        <rect x="4" y="10" width="16" height="12" rx="2"></rect>
+                        <path d="M12 22v-4"></path>
+                        <path d="M9 14h6"></path>
+                    </svg>
+                    Controls
+                </div>
+                <div class="controls">
+                    <div class="control-row">
+                        <div id="status" class="status">
+                            <div id="statusIndicator" class="status-indicator"></div>
+                            <span id="statusText">Status: OFF</span>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="turnOnBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                <line x1="12" y1="2" x2="12" y2="12"></line>
+                            </svg>
+                            Turn ON
+                        </button>
+                        <button id="turnOffBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                <line x1="12" y1="2" x2="12" y2="12"></line>
+                            </svg>
+                            Turn OFF
+                        </button>
+                    </div>
+                    
+                    <div class="brightness-control">
+                        <h3>Brightness</h3>
+                        <input type="range" min="1" max="100" value="100" class="brightness-slider" id="brightnessSlider">
+                        <div class="brightness-labels">
+                            <span>Low</span>
+                            <span>High</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MQTT setup
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+        const bulb = document.getElementById('bulb');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+
+        mqttClient.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            mqttClient.subscribe('/student_group/light_status');
+        });
+
+        mqttClient.on('error', (err) => {
+            console.error('MQTT Error:', err);
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            const state = message.toString();
+            console.log(`Received: ${topic} → ${state}`);
+            if (topic === '/student_group/light_status') {
+                updateLightState(state === 'ON');
+            }
+        });
+
+        function updateLightState(isOn) {
+            if (isOn) {
+                bulb.classList.remove('off');
+                bulb.classList.add('on');
+                bulb.classList.add('flicker');
+                setTimeout(() => {
+                    bulb.classList.remove('flicker');
+                }, 2000);
+                statusText.innerText = 'Status: ON';
+                statusIndicator.classList.add('on');
+            } else {
+                bulb.classList.remove('on');
+                bulb.classList.add('off');
+                statusText.innerText = 'Status: OFF';
+                statusIndicator.classList.remove('on');
+            }
+        }
+
+        // Button event listeners
+        document.getElementById('turnOnBtn').addEventListener('click', () => {
+            mqttClient.publish('/student_group/light_control', 'ON');
+            console.log('Published: ON');
+            updateLightState(true);
+        });
+
+        document.getElementById('turnOffBtn').addEventListener('click', () => {
+            mqttClient.publish('/student_group/light_control', 'OFF');
+            console.log('Published: OFF');
+            updateLightState(false);
+        });
+
+        // Brightness slider
+        brightnessSlider.addEventListener('input', function() {
+            const brightness = this.value;
+            if (bulb.classList.contains('on')) {
+                bulb.style.opacity = brightness / 100;
+                bulb.style.boxShadow = `0 0 ${brightness * 0.3}px rgba(0, 112, 243, ${brightness * 0.008}), 
+                                        0 0 ${brightness * 0.6}px rgba(0, 112, 243, ${brightness * 0.006}), 
+                                        0 0 ${brightness}px rgba(0, 112, 243, ${brightness * 0.004})`;
+            }
+        });
+
+        // 3D effect on mouse move
+        const room = document.querySelector('.room');
+        document.addEventListener('mousemove', (e) => {
+            if (window.innerWidth > 768) {
+                const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+                const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+                room.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            }
+        });
+    </script>
+</body>
+</html>
