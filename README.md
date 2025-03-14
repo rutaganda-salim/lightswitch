@@ -51,4 +51,5 @@ python light_switch.py
 - Check WebSockets (port 9001) and MQTT (port 1883) connectivity  
 - Review browser console logs for errors  
 
+-----
 *By Salim*
