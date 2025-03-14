@@ -1,82 +1,54 @@
-# MQTT-Based Light Control System
+# MQTT-Based IoT Light Control  
 
-An interactive web application designed for IoT light control using the MQTT protocol. This project features a web interface with a dynamic light bulb simulation and a Python script that acts as a virtual ESP8266 device responding to MQTT commands.
+A web-based system for controlling lights using the MQTT protocol, featuring real-time updates and a Python script that simulates an IoT device.  
 
-![Demo](https://via.placeholder.com/800x400?text=MQTT+Light+Control+Demo)
+## Features  
 
-## Key Features
+- Simple web interface with instant ON/OFF controls  
+- Real-time MQTT communication  
+- Light flickering effect on activation  
+- Python script mimicking an ESP8266 device  
 
-- User-friendly web interface with animated light bulb effects
-- Real-time MQTT-based communication
-- ON/OFF controls with immediate visual response
-- Flickering animation when the light turns on
-- Python-based simulated IoT device
+## Structure  
 
-## Project Structure
+- **`index.html`** – Web UI  
+- **`light_simulation.py`** – IoT simulation script  
+- **`README.md`** – Setup guide  
 
-- **`index.html`**: Provides the web-based UI for controlling the light
-- **`light_simulation.py`**: Python script emulating an ESP8266 device
-- **`README.md`**: Documentation for setup and usage
+## Technical Details  
 
-## Technical Overview
+- Uses MQTT.js for WebSockets communication  
+- Paho MQTT for Python-based device simulation  
+- Connects to MQTT broker at `157.173.101.159`  
+- Publishes commands to `/student_group/light_control`  
+- Subscribes to `/student_group/light_status` for updates  
 
-- Uses MQTT.js for WebSockets-based MQTT communication in the browser
-- Utilizes Paho MQTT for Python-based device simulation
-- Connects to the MQTT broker at `157.173.101.159`
-- Publishes commands to `/student_group/light_control`
-- Subscribes to `/student_group/light_status` for updates
+## Setup  
 
-## Installation & Setup
+### Web Interface  
 
-### Prerequisites
+1. Open `index.html` in a browser  
+2. Connects via WebSockets (port 9001)  
+3. Control the light using buttons  
 
-- A modern web browser with JavaScript enabled
-- Python 3.x with `paho-mqtt` installed
-- Connectivity to the MQTT broker at `157.173.101.159`
+### Python IoT Simulation  
 
-### Running the Web Interface
-
-1. Open `index.html` in a browser
-2. The UI will attempt to connect to the MQTT broker over WebSockets (port 9001)
-3. Use the provided buttons to toggle the light ON or OFF
-
-### Running the Python IoT Simulation
-
-1. Install dependencies:
+1. Install dependencies:  
    ```bash
    pip install paho-mqtt
-   ```
-2. Start the simulation script:
-   ```bash
-   python light_simulation.py
-   ```
-3. The script will connect to the MQTT broker (port 1883) and react to commands
 
-## MQTT Topics Used
+```bash
+python light_switch.py
+```
+## MQTT Topics
 
-- `/student_group/light_control` – Transmits ON/OFF commands to the device
-- `/student_group/light_status` – Receives feedback on the current light status
+- `/student_group/light_control` – ON/OFF commands  
+- `/student_group/light_status` – Status updates  
 
-## Workflow Explanation
+## Troubleshooting  
 
-1. The web app sends ON/OFF commands to `/student_group/light_control`
-2. The Python script listens for these messages and acts accordingly
-3. The script sends status updates to `/student_group/light_status`
-4. The UI updates the light bulb animation based on received feedback
+- Ensure the MQTT broker is active  
+- Check WebSockets (port 9001) and MQTT (port 1883) connectivity  
+- Review browser console logs for errors  
 
-## Troubleshooting Guide
-
-- If the web app fails to connect, verify the MQTT broker’s availability
-- Ensure port 9001 is accessible for WebSockets communication
-- Ensure port 1883 is open for Python MQTT connections
-- Check browser console logs for potential connection issues
-
-## License
-
-Distributed under the [MIT License](LICENSE).
-
-## Credits
-
-- MQTT.js for browser-based MQTT handling
-- Paho MQTT for Python-based client operations
-
+*By Salim*
